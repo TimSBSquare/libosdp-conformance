@@ -19,21 +19,13 @@
   http://www.securityindustry.org
 */
 
-
-typedef struct osdp_tls_config
-{
-//  int role;
-  int
-    listen_sap;
-  char
-    version [1024];
-  char
-    cert_file [1024];
-  char
-    key_file [1024];
-  char
-    ca_file [1024];
+typedef struct osdp_tls_config {
+  //  int role;
+  int listen_sap;
+  char version[1024];
+  char cert_file[1024];
+  char key_file[1024];
+  char ca_file[1024];
 } OSDP_TLS_CONFIG;
 
 #define MAX_BUF (1024)
-
