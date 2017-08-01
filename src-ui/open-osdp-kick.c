@@ -19,50 +19,45 @@
   limitations under the License.
 */
 
-#include <sys/socket.h>
-#include <sys/un.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 #include <unistd.h>
 
-char socket_path [1024];
+char socket_path[1024];
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[]) {
   struct sockaddr_un addr;
   char buf[100];
-  int fd,rc;
-  char
-    *tag;
+  int fd, rc;
+  char* tag;
 
   tag = "CP";
-  if (argc > 1)
-  {
-    if (strcmp (argv [1], "MON") == 0)
-      tag = "MON";
-    if (strcmp (argv [1], "PD") == 0)
-      tag = "PD";
+  if (argc > 1) {
+    if (strcmp(argv[1], "MON") == 0) tag = "MON";
+    if (strcmp(argv[1], "PD") == 0) tag = "PD";
   };
-  sprintf (socket_path,
-    "/opt/osdp-conformance/run/%s/open-osdp-control",
-    tag);
+  sprintf(socket_path, "/opt/osdp-conformance/run/%s/open-osdp-control", tag);
 
-  if ( (fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
+  if ((fd = socket(AF_UNIX, SOCK_STREAM, 0)) == -1) {
     perror("socket error");
     exit(-1);
   }
 
   memset(&addr, 0, sizeof(addr));
   addr.sun_family = AF_UNIX;
-  strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path)-1);
+  strncpy(addr.sun_path, socket_path, sizeof(addr.sun_path) - 1);
 
   if (connect(fd, (struct sockaddr*)&addr, sizeof(addr)) == -1) {
     perror("connect error");
     exit(-1);
   }
 
-  while( (rc=read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
+  while ((rc = read(STDIN_FILENO, buf, sizeof(buf))) > 0) {
     if (write(fd, buf, rc) != rc) {
-      if (rc > 0) fprintf(stderr,"partial write");
+      if (rc > 0)
+        fprintf(stderr, "partial write");
       else {
         perror("write error");
         exit(-1);

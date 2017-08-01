@@ -19,242 +19,191 @@
   limitations under the License.
 */
 
-
 #include <string.h>
-
 
 #include <jansson.h>
 
-
-#include <osdp-tls.h>
 #include <open-osdp.h>
+#include <osdp-tls.h>
 #include <osdp_conformance.h>
 
+extern OSDP_OUT_CMD current_output_command[];
+extern OSDP_PARAMETERS p_card;
 
-extern OSDP_OUT_CMD
-  current_output_command [];
-extern OSDP_PARAMETERS
-  p_card;
-
-
-int
-  read_command
-    (OSDP_CONTEXT
-      *ctx,
-    OSDP_COMMAND
-      *cmd)
+int read_command(OSDP_CONTEXT* ctx, OSDP_COMMAND* cmd)
 
 { /* read_command */
 
-  FILE
-    *cmdf;
-  char
-    current_command [1024];
-  char
-    current_options [1024];
-  char
-    field [1024];
-  int
-    i;
-  char
-    json_string [16384];
-  json_t
-    *parameter;
-  json_t
-    *root;
-  json_error_t
-    status_json;
-  int
-    status;
-  int
-    status_io;
-  char
-    *test_command;
-  char
-    this_command [1024];
-  json_t
-    *value;
-  char
-    vstr [1024];
-
+  FILE* cmdf;
+  char current_command[1024];
+  char current_options[1024];
+  char field[1024];
+  int i;
+  char json_string[16384];
+  json_t* parameter;
+  json_t* root;
+  json_error_t status_json;
+  int status;
+  int status_io;
+  char* test_command;
+  char this_command[1024];
+  json_t* value;
+  char vstr[1024];
 
   status = ST_CMD_PATH;
-  cmdf = fopen (ctx->command_path, "r");
-  if (cmdf != NULL)
-  {
+  cmdf = fopen(ctx->command_path, "r");
+  if (cmdf != NULL) {
     status = ST_OK;
-    memset (json_string, 0, sizeof (json_string));
-    status_io = fread (json_string,
-      sizeof (json_string [0]), sizeof (json_string), cmdf);
-    if (status_io >= sizeof (json_string))
-      status = ST_CMD_OVERFLOW;
-    if (status_io <= 0)
-      status = ST_CMD_UNDERFLOW;
+    memset(json_string, 0, sizeof(json_string));
+    status_io =
+        fread(json_string, sizeof(json_string[0]), sizeof(json_string), cmdf);
+    if (status_io >= sizeof(json_string)) status = ST_CMD_OVERFLOW;
+    if (status_io <= 0) status = ST_CMD_UNDERFLOW;
   };
-fprintf (stderr, "command path %s status now %d.\n",
-  ctx->command_path, status);
+  fprintf(stderr, "command path %s status now %d.\n", ctx->command_path,
+          status);
 
-  if (status EQUALS ST_OK)
-  {
-    root = json_loads (json_string, 0, &status_json);
-    if (!root)
-    {
-      fprintf (stderr, "JSON parser failed.  String was ->\n%s<-\n",
-        json_string);
+  if (status EQUALS ST_OK) {
+    root = json_loads(json_string, 0, &status_json);
+    if (!root) {
+      fprintf(stderr, "JSON parser failed.  String was ->\n%s<-\n",
+              json_string);
       status = ST_CMD_ERROR;
     };
-    if (status EQUALS ST_OK)
-    {
-      strcpy (field, "command");
-      value = json_object_get (root, field);
-      strcpy (current_command, json_string_value (value));
-      if (!json_is_string (value))
-        status = ST_CMD_INVALID;
+    if (status EQUALS ST_OK) {
+      strcpy(field, "command");
+      value = json_object_get(root, field);
+      strcpy(current_command, json_string_value(value));
+      if (!json_is_string(value)) status = ST_CMD_INVALID;
     };
   };
 
   // command bio_read_template
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "bio_read"))
-    {
-      cmd->command = OSDP_CMD_NOOP; // nothing other than what's here so no-op
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "bio_read")) {
+      cmd->command = OSDP_CMD_NOOP;  // nothing other than what's here so no-op
 
-      status = send_bio_read_template (ctx);
+      status = send_bio_read_template(ctx);
     };
   };
 
   // command busy
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "busy"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "busy")) {
       cmd->command = OSDP_CMDB_BUSY;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
   };
 
   // command buzz
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "buzz"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "buzz")) {
       cmd->command = OSDP_CMDB_BUZZ;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
 
-      cmd->details [0] = 15;
-      cmd->details [1] = 15;
-      cmd->details [2] = 3;
+      cmd->details[0] = 15;
+      cmd->details[1] = 15;
+      cmd->details[2] = 3;
 
-      parameter = json_object_get (root, "off_time");
-      if (json_is_string (parameter))
-      {
-        strcpy (vstr, json_string_value (parameter));
-        sscanf (vstr, "%d", &i);
-        cmd->details [1] = i;
+      parameter = json_object_get(root, "off_time");
+      if (json_is_string(parameter)) {
+        strcpy(vstr, json_string_value(parameter));
+        sscanf(vstr, "%d", &i);
+        cmd->details[1] = i;
       };
-      parameter = json_object_get (root, "on_time");
-      if (json_is_string (parameter))
-      {
-        strcpy (vstr, json_string_value (parameter));
-        sscanf (vstr, "%d", &i);
-        cmd->details [0] = i;
+      parameter = json_object_get(root, "on_time");
+      if (json_is_string(parameter)) {
+        strcpy(vstr, json_string_value(parameter));
+        sscanf(vstr, "%d", &i);
+        cmd->details[0] = i;
       };
-      parameter = json_object_get (root, "repeat");
-      if (json_is_string (parameter))
-      {
-        strcpy (vstr, json_string_value (parameter));
-        sscanf (vstr, "%d", &i);
-        cmd->details [2] = i;
+      parameter = json_object_get(root, "repeat");
+      if (json_is_string(parameter)) {
+        strcpy(vstr, json_string_value(parameter));
+        sscanf(vstr, "%d", &i);
+        cmd->details[2] = i;
       };
     };
-  }; 
+  };
 
   // command capabilities
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "capabilities";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_CAPAS;
-      if (ctx->verbosity > 4)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 4) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // command conform_2_2_1
 
   if (status EQUALS ST_OK) {
-    if (0 EQUALS strcmp (current_command, "conform_2_2_1")) {
-      cmd->command = OSDP_CMDB_CONFORM_2_2_1; }; };
+    if (0 EQUALS strcmp(current_command, "conform_2_2_1")) {
+      cmd->command = OSDP_CMDB_CONFORM_2_2_1;
+    };
+  };
 
   // command conform_2_2_2
 
   if (status EQUALS ST_OK) {
-    if (0 EQUALS strcmp (current_command, "conform_2_2_2")) {
-      cmd->command = OSDP_CMDB_CONFORM_2_2_2; }; };
+    if (0 EQUALS strcmp(current_command, "conform_2_2_2")) {
+      cmd->command = OSDP_CMDB_CONFORM_2_2_2;
+    };
+  };
 
   // command conform_2_2_3
 
   if (status EQUALS ST_OK) {
-    if (0 EQUALS strcmp (current_command, "conform_2_2_3")) {
-      cmd->command = OSDP_CMDB_CONFORM_2_2_3; }; };
+    if (0 EQUALS strcmp(current_command, "conform_2_2_3")) {
+      cmd->command = OSDP_CMDB_CONFORM_2_2_3;
+    };
+  };
 
   // command conform_2_2_4
 
   if (status EQUALS ST_OK) {
-    if (0 EQUALS strcmp (current_command, "conform_2_2_4")) {
-      cmd->command = OSDP_CMDB_CONFORM_2_2_4; }; };
+    if (0 EQUALS strcmp(current_command, "conform_2_2_4")) {
+      cmd->command = OSDP_CMDB_CONFORM_2_2_4;
+    };
+  };
 
   // command conform_2_6_1
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "conform_2_6_1"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "conform_2_6_1")) {
       cmd->command = OSDP_CMDB_CONFORM_2_6_1;
-      strcpy (ctx->text,
-" ***OSDP CONFORMANCE TEST*** 45678901234567890123456789012345678901234567890123456789012345678901234567890");
+      strcpy(ctx->text,
+             " ***OSDP CONFORMANCE TEST*** "
+             "45678901234567890123456789012345678901234567890123456789012345678"
+             "901234567890");
     };
   };
 
   // command conform_3_14_2 - corrupted COMSET
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "conform_3_14_2"))
-    {
-      cmd->command = OSDP_CMD_NOOP; // nothing other than what's here so no-op
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "conform_3_14_2")) {
+      cmd->command = OSDP_CMD_NOOP;  // nothing other than what's here so no-op
 
-      status = send_comset (ctx, p_card.addr, 0, "999999");
+      status = send_comset(ctx, p_card.addr, 0, "999999");
     };
   };
 
   // command text
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "text"))
-    {
-      char
-        field [1024];
-      json_t
-        *value;
-      strcpy (field, "message");
-      value = json_object_get (root, field);
-      if (json_is_string (value))
-      {
-        strcpy (ctx->text, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "text")) {
+      char field[1024];
+      json_t* value;
+      strcpy(field, "message");
+      value = json_object_get(root, field);
+      if (json_is_string(value)) {
+        strcpy(ctx->text, json_string_value(value));
         cmd->command = OSDP_CMDB_TEXT;
       };
     };
@@ -263,329 +212,249 @@ fprintf (stderr, "command path %s status now %d.\n",
   // COMSET.  takes two option arguments, "new_address" and "new_speed".
   // default for new_address is 0x00, default for new_speed is 9600
 
-  if (status EQUALS ST_OK)
-  {
-
-    if (0 EQUALS strcmp (current_command, "comset"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "comset")) {
       cmd->command = OSDP_CMDB_COMSET;
 
-      value = json_object_get (root, "new_address");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        cmd->details [0] = i;
+      value = json_object_get(root, "new_address");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        cmd->details[0] = i;
       };
-      value = json_object_get (root, "new_speed");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        *(int *) &(cmd->details [4]) = i; // by convention bytes 4,5,6,7 are the speed.
+      value = json_object_get(root, "new_speed");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        *(int*)&(cmd->details[4]) =
+            i;  // by convention bytes 4,5,6,7 are the speed.
       };
       if (ctx->verbosity > 2)
-        fprintf (stderr, "Command COMSET Address %d Speed %d\n",
-          (int) (cmd->details [0]),
-          *(int *) &(cmd->details [4]));
+        fprintf(stderr, "Command COMSET Address %d Speed %d\n",
+                (int)(cmd->details[0]), *(int*)&(cmd->details[4]));
     };
-  }; 
+  };
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "dump_status";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_DUMP_STATUS;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  };
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "identify";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_IDENT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // initiate secure channel
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "initiate-secure-channel";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_INIT_SECURE;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // request input status
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "input_status";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_ISTAT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // command "keypad" - send keyboard input
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "keypad"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "keypad")) {
       cmd->command = OSDP_CMDB_KEYPAD;
 
-      value = json_object_get (root, "digits");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        if (strlen (vstr) > 9)
-        {
-          fprintf (stderr, "Too many digits in keypad input, truncating to first 9\n");
-          vstr [9] = 0;
+      value = json_object_get(root, "digits");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        if (strlen(vstr) > 9) {
+          fprintf(stderr,
+                  "Too many digits in keypad input, truncating to first 9\n");
+          vstr[9] = 0;
         };
-        memcpy (cmd->details, vstr, 9);
+        memcpy(cmd->details, vstr, 9);
       };
     };
   };
 
   // command "local_status" - request local status
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "local_status";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_LSTAT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // command "led"
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "led"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "led")) {
       cmd->command = OSDP_CMDB_LED;
-      cmd->details [1] = 0; // assume LED 0
+      cmd->details[1] = 0;  // assume LED 0
 
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
 
-      value = json_object_get (root, "perm_on_color");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        cmd->details [0] = i;
+      value = json_object_get(root, "perm_on_color");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        cmd->details[0] = i;
       };
-      value = json_object_get (root, "led_number");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        cmd->details [1] = i;
+      value = json_object_get(root, "led_number");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        cmd->details[1] = i;
       };
     };
-  }; 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "operator_confirm"))
-    {
-      cmd->command = OSDP_CMD_NOOP; // nothing other than what's here so no-op
-      value = json_object_get (root, "test");
-      if (json_is_string (value))
-      {
-        strcpy (current_options, json_string_value (value));
-        status = osdp_conform_confirm (current_options);
+  };
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "operator_confirm")) {
+      cmd->command = OSDP_CMD_NOOP;  // nothing other than what's here so no-op
+      value = json_object_get(root, "test");
+      if (json_is_string(value)) {
+        strcpy(current_options, json_string_value(value));
+        status = osdp_conform_confirm(current_options);
       };
     };
   };
 
   // output (digital bits out)
 
-  if (status EQUALS ST_OK)
-  {
-    int
-      i;
-    char
-      vstr [1024];
+  if (status EQUALS ST_OK) {
+    int i;
+    char vstr[1024];
 
     test_command = "output";
-    if (0 EQUALS strcmp (current_command, test_command))
-    {
+    if (0 EQUALS strcmp(current_command, test_command)) {
       cmd->command = OSDP_CMDB_OUT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
 
       // default values in case some are missing
 
-      current_output_command [0].output_number = 0;
-      current_output_command [0].control_code = 2; // permanent on immediate
-      current_output_command [0].timer = 0; // forever
+      current_output_command[0].output_number = 0;
+      current_output_command[0].control_code = 2;  // permanent on immediate
+      current_output_command[0].timer = 0;         // forever
 
       // the output command takes arguments: output_number, control_code
 
-      value = json_object_get (root, "output_number");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        current_output_command [0].output_number = i;
+      value = json_object_get(root, "output_number");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        current_output_command[0].output_number = i;
       };
-      value = json_object_get (root, "control_code");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        current_output_command [0].control_code = i;
+      value = json_object_get(root, "control_code");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        current_output_command[0].control_code = i;
       };
-      value = json_object_get (root, "timer");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
-        current_output_command [0].timer = i;
+      value = json_object_get(root, "timer");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
+        current_output_command[0].timer = i;
       };
     };
-  }; 
+  };
 
   // request output status
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "output_status"))
-    {
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "output_status")) {
       cmd->command = OSDP_CMDB_OSTAT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
-  if (status EQUALS ST_OK)
-  {
-    value = json_object_get (root, "command");
+  if (status EQUALS ST_OK) {
+    value = json_object_get(root, "command");
 
-    strcpy (this_command, json_string_value (value));
+    strcpy(this_command, json_string_value(value));
     test_command = "present_card";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_PRESENT_CARD;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
   // request (attached) reader status
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "reader_status";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_RSTAT;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
+  };
 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "reset_power";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_RESET_POWER;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  };
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "send_poll";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_SEND_POLL;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
-  if (status EQUALS ST_OK)
-  {
-    strcpy (this_command, json_string_value (value));
+  };
+  if (status EQUALS ST_OK) {
+    strcpy(this_command, json_string_value(value));
     test_command = "tamper";
-    if (0 EQUALS strncmp (this_command, test_command, strlen (test_command)))
-    {
+    if (0 EQUALS strncmp(this_command, test_command, strlen(test_command))) {
       cmd->command = OSDP_CMDB_TAMPER;
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
     };
-  }; 
-
+  };
 
   // command verbosity
   // arg level - range 0-9
 
-  if (status EQUALS ST_OK)
-  {
-    if (0 EQUALS strcmp (current_command, "verbosity"))
-    {
-      int
-        i;
-      char
-        vstr [1024];
+  if (status EQUALS ST_OK) {
+    if (0 EQUALS strcmp(current_command, "verbosity")) {
+      int i;
+      char vstr[1024];
 
-      cmd->command = OSDP_CMD_NOOP; // nothing other than what's here so no-op
-      if (ctx->verbosity > 3)
-        fprintf (stderr, "command was %s\n",
-          this_command);
+      cmd->command = OSDP_CMD_NOOP;  // nothing other than what's here so no-op
+      if (ctx->verbosity > 3) fprintf(stderr, "command was %s\n", this_command);
 
-      value = json_object_get (root, "level");
-      if (json_is_string (value))
-      {
-        strcpy (vstr, json_string_value (value));
-        sscanf (vstr, "%d", &i);
+      value = json_object_get(root, "level");
+      if (json_is_string(value)) {
+        strcpy(vstr, json_string_value(value));
+        sscanf(vstr, "%d", &i);
         ctx->verbosity = i;
       };
     };
-  }; 
+  };
 
-  if (cmdf != NULL)
-    fclose (cmdf);
+  if (cmdf != NULL) fclose(cmdf);
   return (status);
 
 } /* read_command */
-
